@@ -358,6 +358,8 @@ export async function localRoutes(app:FastifyInstance,options:{agentTimeoutMs?:n
   let repairs=0,capabilityRepairs=0,emptyResponses=0,timeoutResponses=0,announcedMessages=0,modelSteps=0;
   // Counts reads of the same unchanged range so a model that forgets compacted results cannot loop on reading.
   const repeatedReads=new Map<string,number>();
+  // Characters read per unchanged file version; shifting offsets must not dodge the repeat guard.
+  const readVolume=new Map<string,number>();
   for(;;){
    ensureRunning(req);
    if(laterMessages.length>announcedMessages){conversation.push({role:'user',content:'New message from the human while you work (takes precedence if it conflicts): '+laterMessages.slice(announcedMessages).join('\n')});announcedMessages=laterMessages.length;journal.push('Nhận tin nhắn mới trong lúc làm');}
@@ -495,6 +497,9 @@ export async function localRoutes(app:FastifyInstance,options:{agentTimeoutMs?:n
      const source=fs.readFileSync(full,'utf8'),start=action.offset??0,length=action.length??12000;
      if(!Number.isInteger(start)||start<0||!Number.isInteger(length)||length<1||length>16000)throw Error('offset phải >=0, length từ 1 đến 16000 ký tự.');
      const stat=fs.statSync(full),readKey=[action.path,start,length,stat.size,stat.mtimeMs].join('|'),readCount=(repeatedReads.get(readKey)||0)+1;repeatedReads.set(readKey,readCount);
+     const versionKey=[action.path,stat.size,stat.mtimeMs].join('|'),alreadyRead=readVolume.get(versionKey)||0;
+     if(alreadyRead>=Math.max(2*source.length,32000)){journal.push(`Bỏ qua lần đọc lặp ${action.path}`);conversation.push({role:'assistant',content:text},{role:'user',content:'Refused: since your last change you have already read about '+Math.round(alreadyRead/Math.max(source.length,1))+' times the full length of '+action.path+' ('+source.length+' characters). Stop reading it. Act now: edit with {"action":"write","path":"'+action.path+'","find":"exact snippet","replacement":"new snippet"}, split the code into smaller files, run a check, or return final with what is done and what remains.'});continue;}
+     readVolume.set(versionKey,alreadyRead+Math.max(0,Math.min(length,source.length-start)));
      if(readCount>=3){journal.push(`Bỏ qua lần đọc lặp ${action.path}`);conversation.push({role:'assistant',content:text},{role:'user',content:'Refused: you have already read '+action.path+' at offset '+start+' '+(readCount-1)+' times and the file has not changed since. Do not read it again. Act now on what you know: edit with {"action":"write","path":"'+action.path+'","find":"exact snippet","replacement":"new snippet"}, write a new file, run a check, save progress with checkpoint, or return final with what is done and what remains.'});continue;}
      result=(readCount>1?'[You already read this exact range and the file is unchanged. Make progress after this read instead of reading again.]\n':'')+source.slice(start,start+length)+(start+length<source.length?'\n[Partial file: '+source.length+' characters total. Read next with offset '+(start+length)+'. Use write with find/replacement to change only the exact section.]':'');workMemory.record(memory,'read',action.path,result,{full,relative:action.path});sourceEvidence[action.path]=result;journal.push(`Đọc ${action.path} (ký tự ${start}–${Math.min(start+length,source.length)})`);
     }else if(action.action==='write'){
