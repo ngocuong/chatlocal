@@ -1,0 +1,49 @@
+{
+  "name": "chatgpt-nodejs",
+  "version": "1.0.0",
+  "description": "ChatGPT to OpenAI & Anthropic Compatible REST API Server in Node.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build:tsc": "tsc",
+    "build": "node scripts/build.js",
+    "start": "node dist/index.js",
+    "start:prod": "cd production && npm start"
+  },
+  "keywords": [
+    "chatgpt",
+    "openai",
+    "reverse-proxy",
+    "api",
+    "anthropic",
+    "nodejs"
+  ],
+  "author": "Danieldev",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@fastify/multipart": "^10.1.2",
+    "adm-zip": "^0.6.1",
+    "docx": "^9.10.0",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.2.1",
+    "mammoth": "^1.13.0",
+    "markdown-it": "^15.0.3",
+    "pdfjs-dist": "^5.6.205",
+    "playwright": "^1.64.0",
+    "pptxgenjs": "^4.0.1",
+    "sharp": "^0.35.5",
+    "undici": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.13.10",
+    "fs-extra": "^11.4.1",
+    "javascript-obfuscator": "^5.8.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

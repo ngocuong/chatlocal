@@ -1,0 +1,7 @@
+// Opt-in: LOCAL_IMAGE_SMOKE=1 runs real offline FLUX inference (takes minutes).
+if(process.env.LOCAL_IMAGE_SMOKE!=='1'){console.log('SKIP: set LOCAL_IMAGE_SMOKE=1 to run real local image generation');process.exit(0);}
+import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import sharp from 'sharp';
+import {imageArtifact,readArtifact,imageStatus} from '../dist/services/chat-artifacts.service.js';
+assert.equal(imageStatus().local.ready,true,'Local FLUX.2 Klein must be installed');
+const artifact=await imageArtifact('local-image-check',{kind:'generate',localModel:'flux2-klein-4b-q8',prompt:'A charming 3D cartoon Christmas scene, a sparkling decorated Christmas tree, a cute smiling snowman, a happy child playing in the snow, warm festive lights, colorful animated movie illustration, wide composition',name:'giang-sinh-local'},async()=>{throw Error('Paid network API must not be called')});
+const buffer=readArtifact(artifact.id,'local-image-check').buffer;const metadata=await sharp(buffer).metadata();assert.equal(metadata.width,1024);assert.equal(metadata.height,1024);assert.equal(metadata.format,'png');const stats=await sharp(buffer).stats();assert.ok(stats.channels.some(c=>c.stdev>10),'Image must not be a blank frame');fs.writeFileSync(path.resolve('data/giang-sinh-local.png'),buffer);fs.rmSync(path.resolve('data/chat-artifacts',artifact.id),{recursive:true,force:true});console.log('PASS: real local FLUX.2 Klein generation, offline, 1024x1024 nonblank PNG; no OpenAI API');

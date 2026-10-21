@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {reviewCompletion} from '../dist/services/completion-review.service.js';
+import {decodePlan,planTask} from '../dist/services/task-planner.service.js';
+const input={specification:'Implement real algorithms and tests',files:{'index.html':'TODO'},evidence:[],skills:['karpathy','codebase-design'],proposedAnswer:'Done'};
+const fakeSuccess=JSON.stringify({complete:true,issues:[],requirements:[{requirement:'Algorithms',satisfied:true,evidenceIds:[0]}]});
+assert.equal((await reviewCompletion(input,async()=>fakeSuccess)).complete,false);
+input.evidence=[{id:0,tool:'terminal',output:{exit:0,running:true,output:'Starting'}}];
+assert.equal((await reviewCompletion(input,async()=>fakeSuccess)).complete,false);
+input.evidence[0].output={exit:0,running:false,output:'domain fixtures passed'};
+assert.equal((await reviewCompletion(input,async()=>fakeSuccess)).complete,true);
+assert.equal((await reviewCompletion(input,async()=>JSON.stringify({complete:false,issues:['UI does not invoke the engine'],requirements:[{requirement:'Algorithms',satisfied:false,evidenceIds:[]}]}))).complete,false);
+assert.equal((await reviewCompletion(input,async()=>{throw Error('upstream failure')})).complete,false);
+assert.throws(()=>decodePlan('{"mode":"task","task":"implementation","allowedTools":["write"],"skillIds":["invented"]}'));
+let plannerPrompt='';
+const plan=await planTask([{role:'user',content:'Use Matt Pocock and Karpathy; implement full algorithms'}],async prompt=>{plannerPrompt=prompt;return JSON.stringify({mode:'task',task:'implement',allowedTools:['read','write','terminal','job_status'],skillIds:['karpathy','codebase-design'],verificationRequired:true})});
+assert.deepEqual(plan.skillIds,['karpathy','codebase-design']);assert.equal(plan.verificationRequired,true);assert.match(plannerPrompt,/General Matt Pocock engineering means codebase-design/);
+console.log('PASS: completion fails closed without evidence, running jobs cannot pass, unmet requirements reject completion, semantic skill selection schema');

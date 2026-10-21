@@ -1,0 +1,10 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const html=fs.readFileSync('web/index.html','utf8');
+const handler=html.match(/input\.onkeydown=(e=>\{[^\n]+?\});/)[1];
+let submits=0,prevented=0;const pending=[];
+const context={document:{querySelector:()=>({requestSubmit:()=>submits++})},setTimeout:fn=>pending.push(fn)};
+const onkeydown=vm.runInNewContext('('+handler+')',context);
+onkeydown({key:'Enter',shiftKey:false,isComposing:true,keyCode:229,preventDefault:()=>prevented++});assert.equal(submits,0,'IME confirm must not submit');assert.equal(prevented,0,'IME confirm must remain available');
+onkeydown({key:'Enter',shiftKey:true,preventDefault:()=>prevented++});assert.equal(submits,0);
+onkeydown({key:'Enter',shiftKey:false,isComposing:false,keyCode:13,repeat:false,preventDefault:()=>prevented++});assert.equal(submits,0,'Wait until input events finish');pending.forEach(fn=>fn());assert.equal(submits,1);
+console.log('PASS: IME composition, Shift+Enter, deferred Enter submission');

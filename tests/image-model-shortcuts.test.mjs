@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
+class Node{constructor(){this.children=[];this.style={}}append(...items){this.children.push(...items)}replaceChildren(){this.children=[]}}
+const box=new Node(),input={value:'',focus(){}},picker={close(){},click(){this.clicks=(this.clicks||0)+1}},calls=[];const html=fs.readFileSync('web/index.html','utf8');const context={document:{querySelector:s=>s==='#imageModelShortcuts'?box:picker,createElement:()=>new Node()},input,busy:false,chatAttachments:[],chatOutputs:[],confirm:()=>false,askConfirm:async()=>false,setConversationMode:mode=>calls.push(mode),localRequest:async()=>({local:{models:[{id:'flux2-klein-4b-q8',label:'FLUX.2 Klein',size:1024,ready:true},{id:'z-image-turbo-q8',label:'Turbo Q8',size:1024,ready:false}]}})};
+vm.createContext(context);vm.runInContext(html.slice(html.indexOf('async function refreshImageShortcuts(){'),html.indexOf('function populateImageSources(){')).replace('refreshImageShortcuts();',''),context);await context.refreshImageShortcuts();
+const flux=box.children[1],qwen=box.children[2];assert.equal(flux.children[0].textContent,'Flux Q8 · 1024×1024');assert.equal(flux.children[1].textContent,'Tạo ảnh mới');assert.equal(flux.children[2].textContent,'Tạo từ ảnh có sẵn');assert.equal(qwen.children[1].disabled,true);
+await flux.children[1].onclick();assert.equal(input.value,'Dùng Flux Q8 tạo ảnh ');assert.equal(calls.at(-1),'work');assert.equal(picker.clicks,undefined);
+input.value='';await flux.children[2].onclick();assert.equal(input.value,'Dùng Flux Q8 chỉnh ảnh vừa gửi: ');assert.equal(picker.clicks,1);
+input.value='Bản nháp';await flux.children[1].onclick();assert.equal(input.value,'Bản nháp');assert.match(html,/<button id="mediaSettings" hidden>/);
+console.log('PASS: sidebar lists model names and image actions; unready model disabled; templates select Work; uploads prompted only when needed; drafts preserved');

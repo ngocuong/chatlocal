@@ -1,0 +1,23 @@
+node_modules/
+dist/
+production/
+.env
+data/
+*.log
+.DS_Store
+video-guide
+ROADMAP.md
+production
+# Local runtime, credentials and generated files
+.env.*
+!.env.example
+*.pid
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.safetensors
+*.gguf
+*.ckpt
+*.pt
+*.pth

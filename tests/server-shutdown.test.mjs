@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import Fastify from 'fastify';import {localRoutes} from '../dist/api/routes/local.route.js';
+const app=Fastify();let resume,started,closingStarted;let modelCalls=0;
+const ready=new Promise(resolve=>started=resolve),closingReady=new Promise(resolve=>closingStarted=resolve);
+app.addHook('preClose',async()=>closingStarted());
+app.post('/v1/chat/completions',async()=>{modelCalls++;return {choices:[{message:{content:'{"action":"final","content":"done"}'}}]}});
+await app.register(localRoutes,{planner:async()=>{started();return new Promise(resolve=>resume=resolve)}});await app.ready();
+const response=app.inject({method:'POST',url:'/local-agent',headers:{host:'localhost:3040',origin:'http://localhost:3040'},payload:{mode:'work',messages:[{role:'user',content:'Create Word document'}]}});
+await ready;const closing=app.close();await closingReady;resume({mode:'task',task:'Create Word',allowedTools:['document']});
+const result=await response;await closing;
+assert.equal(result.statusCode,503,'Server shutdown must cancel pending work with a clear retryable 503');assert.doesNotMatch(result.body,/Fastify|cannot be reopened/);assert.match(result.body,/khởi động lại|đang dừng/);assert.equal(modelCalls,0);
+console.log('PASS: shutdown cancels pending work before closed Fastify can be called; no model calls or side effects occur');
